@@ -28,7 +28,26 @@ const logFormat =
 
 const logLevel = process.env.LOG_LEVEL || 'debug';
 
-console.info(`resolvers xxx`, resolvers);
+const noneFederal = TypeGraphQLModule.forRootAsync({
+  driver: ApolloDriver,
+  imports: [PrismaModule],
+  inject: [PrismaService],
+  useFactory: (prisma: PrismaService) => ({
+    validate: false,
+    skipCheck: true,
+    cors: true,
+    debug: false,
+    playground: false,
+    plugins: [ApolloServerPluginLandingPageLocalDefault()],
+    dateScalarMode: 'isoDate',
+    emitSchemaFile: path.resolve(__dirname, 'schema.gql'),
+    context: (): GraphReqCtx => ({
+      prisma,
+    }),
+    authChecker,
+  }),
+});
+
 @Module({
   imports: [
     PrismaModule,
@@ -54,32 +73,7 @@ console.info(`resolvers xxx`, resolvers);
       },
       true,
     ),
-    TypeGraphQLModule.forRootAsync({
-      driver: ApolloDriver,
-      imports: [PrismaModule],
-      inject: [PrismaService],
-      useFactory: (prisma: PrismaService) => ({
-        validate: false,
-        skipCheck: true,
-        cors: true,
-        debug: false,
-        playground: false,
-        plugins: [ApolloServerPluginLandingPageLocalDefault()],
-        dateScalarMode: 'isoDate',
-        emitSchemaFile: path.resolve(__dirname, 'schema.gql'),
-        context: (): GraphReqCtx => ({
-          prisma,
-        }),
-
-        // scalarsMap: [{ type: Date, scala }],
-        authChecker,
-
-        // resolvers,
-        // autoSchemaFile: path.join(process.cwd(), 'src/schema.gql'),
-        // context: (): Context => ({ prisma }),
-        // plugins: [ApolloServerPluginLandingPageLocalDefault()],
-      }),
-    }),
+    noneFederal,
     HealthModule,
   ],
   controllers: [AppController],
