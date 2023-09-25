@@ -4,6 +4,10 @@ import * as winston from 'winston';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
+import { TypeGraphQLModule } from 'typegraphql-nestjs';
+import { ApolloDriver } from '@nestjs/apollo';
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+import * as path from 'path';
 
 // / Internal export
 import { AppController } from './app.controller';
@@ -12,6 +16,10 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import configuration from './config/configuration';
 import { RedisConfigService } from './redis_config/redis_config.service';
 import { HealthModule } from './health/health.module';
+import { PrismaService } from './common/prisma/prisma.service';
+import { GraphReqCtx } from './interface';
+import { authChecker } from './common/auth_checker/auth.checker';
+import { resolvers } from './resolvers';
 
 const logFormat =
   process.env.NODE_ENV == 'production'
@@ -20,6 +28,7 @@ const logFormat =
 
 const logLevel = process.env.LOG_LEVEL || 'debug';
 
+console.info(`resolvers xxx`, resolvers);
 @Module({
   imports: [
     PrismaModule,
@@ -45,40 +54,35 @@ const logLevel = process.env.LOG_LEVEL || 'debug';
       },
       true,
     ),
-    // TypeGraphQLModule.forRootAsync({
-    //   driver: ApolloDriver,
-    //   imports: [PrismaModule],
-    //   inject: [PrismaService],
-    //   useFactory: (prisma: PrismaService) => ({
-    //     validate: false,
-    //     skipCheck: true,
-    //     cors: true,
-    //     debug: false,
-    //     playground: false,
-    //     plugins: [ApolloServerPluginLandingPageLocalDefault()],
-    //     dateScalarMode: 'isoDate',
-    //     emitSchemaFile: path.resolve(__dirname, 'schema.gql'),
-    //     context: (): GraphReqCtx => ({
-    //       prisma,
-    //       user: {
-    //         id: '1',
-    //         email: 'sss',
-    //         username: 'sss',
-    //         role: 'SUPER_ADMIN',
-    //       },
-    //     }),
+    TypeGraphQLModule.forRootAsync({
+      driver: ApolloDriver,
+      imports: [PrismaModule],
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => ({
+        validate: false,
+        skipCheck: true,
+        cors: true,
+        debug: false,
+        playground: false,
+        plugins: [ApolloServerPluginLandingPageLocalDefault()],
+        dateScalarMode: 'isoDate',
+        emitSchemaFile: path.resolve(__dirname, 'schema.gql'),
+        context: (): GraphReqCtx => ({
+          prisma,
+        }),
 
-    //     // scalarsMap: [{ type: Date, scala }],
-    //     authChecker,
-    //     // resolvers,
-    //     // autoSchemaFile: path.join(process.cwd(), 'src/schema.gql'),
-    //     // context: (): Context => ({ prisma }),
-    //     // plugins: [ApolloServerPluginLandingPageLocalDefault()],
-    //   }),
-    // }),
+        // scalarsMap: [{ type: Date, scala }],
+        authChecker,
+
+        // resolvers,
+        // autoSchemaFile: path.join(process.cwd(), 'src/schema.gql'),
+        // context: (): Context => ({ prisma }),
+        // plugins: [ApolloServerPluginLandingPageLocalDefault()],
+      }),
+    }),
     HealthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, ...resolvers],
 })
 export class AppModule {}
